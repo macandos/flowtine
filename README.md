@@ -1,2 +1,3 @@
 # flowtine
-a json-style parser
+a json-style parser library made for C++
+
