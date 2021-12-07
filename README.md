@@ -1,5 +1,6 @@
 # flowtine
 a json-style parser library made for C++, used for making simple declerations
 
-# Features
-<code>e</code>
+# How to use
+Clone the github repo, and simply include the flowtine.h file into your own projects
+
