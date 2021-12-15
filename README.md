@@ -1,7 +1,18 @@
 # flowtine
 a json-style parser library made for C++, used for making simple declerations
 
-# How to use
-Simply clone the github repo, and simply include the flowtine.h file into your own projects
+## Features
 
+### Declaring variables
+To declare variables, you can do:
+<code>
+  var name = value; 
+</code>
 
+To access the value in C++, do
+<code>
+  ftn::val("name");
+  
+  // Output
+  // value
+</code>
