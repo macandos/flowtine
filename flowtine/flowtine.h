@@ -1,4 +1,4 @@
-/*   
+/*
 flowtine.h library
 json-style parser
 */
@@ -9,7 +9,7 @@ json-style parser
 #include <optional>
 
 namespace ftn {
-    std::string externfc = ".";
+    std::string externfc = "";
     std::vector<std::string> vals;
 
     enum Types {
@@ -23,10 +23,9 @@ namespace ftn {
 
     class Tok {
         public:
-            enum Types type{WHITESPACE};
+            enum Types type = WHITESPACE;
             std::string text;
             int linenum = 0;
-
     };
 
     class Parse {
@@ -35,8 +34,10 @@ namespace ftn {
         private:
             std::optional<Tok> expOp(const std::string& name = std::string());
             std::optional<Tok> expIden(const std::string& name = std::string());
+            bool expType(std::string name);
 
             bool seeDec();
+            bool seeArr();
 
             std::vector<Tok>::iterator currTok;
             std::vector<Tok>::iterator endTok;
@@ -44,6 +45,10 @@ namespace ftn {
             std::string error;
             std::string linenum;
 
+            std::string arrRet;
+            bool ifArr = false;
+
+            std::vector<std::string> types = {"arr", "var"};
     };
 
     class Tokize {
@@ -72,27 +77,73 @@ namespace ftn {
         parse.parse(toks);
     }
 
-    std::string val(std::string name) {
+    std::string val(std::string name = "", std::string arr = "") {
+        bool ifVal, ifArr;
         Parse parse;
         Tokize tokize;
-        if (externfc == ".") { std::cout << "flowtine: error: file not found!\n"; return "NULL"; }
-
-        std::vector<Tok> toks = tokize.tokize(externfc); 
-        
-        parse.parse(toks);
-        
-        int n = 0;
-        for (std::string i : vals) {
-            if (i == name) {
-                return vals[n + 1];
-            }
-
-            n++;
+        if (externfc == "") {
+            std::cerr << "flowtine: error: file not found or is empty\n"; 
+            exit(1);
         }
 
+        if (name == "") { return "null"; }
+
+        int n = 2;
+        std::vector<Tok> tokens;
+
+        for (std::string val : vals) {
+            std::vector<Tok> toks = tokize.tokize(val);
+            // adds the toks vector to the tokens vector
+            tokens.insert(tokens.end(), toks.begin(), toks.end());
+        }
+
+        for (int i = 0; i < tokens.size(); i++) {
+            Tok tok = tokens[i];
+            if (arr == "") {
+                if (tok.text == "arr" || ifArr) {
+                    ifArr = true;
+
+                    if (tok.text == "}") {
+                        ifArr = false;
+                        continue;
+                    }
+                    else {
+                        continue;
+                    }
+                }
+
+                if (tok.text == "name") {
+                    if (tokens[i + 2].text == name) {
+                        return tokens[i + 5].text;
+                    }
+                }
+
+                // std::cout << tok.text << " " << i << std::endl;
+            }
+
+            else {
+                // std::cout << tok.text << " " << i << std::endl;
+
+                if (tok.text == "arr") {
+                    ifArr = true;
+                    if (arr == tokens[i + 2].text) {
+                        if (tokens[i + 4].text == "name") {
+                            if (tokens[i + 6].text == name) {
+                                return tokens[i + 13].text;
+                            }
+                        }
+                    }
+                }
+                continue;
+            }
+        
+        }
+
+        // if no val is found, return null
         return "null";
     }
 
+    // lexer
     std::vector<Tok> Tokize::tokize(std::string &filecontents) {
         std::vector<Tok> toks;
         Tok currTok;
@@ -103,6 +154,9 @@ namespace ftn {
             switch (chr) {
                 case '=':
                 case ';':
+                case '{':
+                case '}':
+                case ':':
                     endTok(currTok, toks);
                     currTok.type = OP;
                     currTok.text.append(1, chr);
@@ -148,12 +202,13 @@ namespace ftn {
             }
         }
 
+        endTok(currTok, toks);
         return toks;
     }
 
     void Tokize::endTok(Tok &tok, std::vector<Tok> &toks) {
         if (tok.type == COMM) {
-            // ..
+            // do nothing
         } 
         else if (tok.type != WHITESPACE) {
             toks.push_back(tok);
@@ -163,54 +218,150 @@ namespace ftn {
         tok.text.erase();
     }
 
-    // ....
+    // Parsing stage
     void Parse::parse(std::vector<Tok> toks) {
         currTok = toks.begin();
         endTok = toks.end();
 
         while (currTok != endTok) {
-            if (seeDec()) {
-                // ..
-            }
-            else {
+            if (!seeDec()) {
                 std::cout << "error: " << error << " on line: " << currTok->linenum << std::endl;
                 ++currTok;
             }
         }
     }
 
-    bool Parse::seeDec() {
+    bool Parse::seeDec() {       
         std::vector<Tok>::iterator pStart = currTok;
+        if (expType("var")) {
+            std::optional<Tok> ifName = expIden();
+
+            if (ifName.has_value()) {
+                if (expOp("=").has_value()) {
+                    std::optional<Tok> ifVal = expIden();
+
+                    if (ifVal.has_value()) {
+                        if (expOp(";").has_value()) {
+                            vals.push_back("name:" + ifName->text);
+                            vals.push_back("val:" + ifVal->text);
+                            return true;
+                        }
+                        else {
+                            std::cerr << "invalid syntax - ';' missing on line: " << currTok->linenum + 2;
+                            pStart = currTok;
+                            return true;
+                        }
+                    }
+                    else {
+                        error = "no value found";
+                        pStart = currTok;
+                        return false;
+                    }
+                }
+                else {
+                    error = "invalid syntax - '=' missing";
+                    pStart = currTok;
+                    return false;
+                }
+            }
+            else {
+                error = "no name found";
+                pStart = currTok;
+                return false;
+            }
+        }
+        else if (expType("arr") || ifArr) {
+            std::optional<Tok> ifName = expIden();
+
+            if (ifName.has_value() || ifArr) {
+                if (expOp("=").has_value() || ifArr) {
+                    if (expOp("{").has_value() || ifArr) {
+                        ifArr = true;
+                        arrRet = ifName->text + ":";
+                        
+                        while (!expOp("}").has_value()) {
+                            if (!seeArr()) {
+                                std::cerr << "error: " << error << " on line: " << currTok->linenum << std::endl;
+                                ++currTok;
+                            }
+                            if (currTok == endTok) {
+                                break;
+                            }
+
+                            if (expOp("}").has_value()) {
+                                if (expOp(";").has_value()) {
+                                    ifArr = false;
+                                    break;
+                                }
+                                else {
+                                    error = "invalid syntax - ';' missing";
+                                    pStart = currTok;
+                                }
+                            }
+                            else {
+                                error = "invalid syntax - '{' missing";
+                                pStart = currTok;
+                            }
+                        }
+                        return true;
+                    } 
+                    else {
+                        error = "invalid syntax - '{' missing";
+                        pStart = currTok;
+                    }
+                }
+                else {
+                    error = "invalid syntax - '=' missing";
+                    pStart = currTok;
+                }
+            }
+            else {
+                error = "no name found";
+                pStart = currTok;
+            }
+            return false;
+        }
+        else {
+            error = "no type found";
+            pStart = currTok;
+        }
+
+        return false;
+    }
+
+    bool Parse::seeArr() {
         std::optional<Tok> ifName = expIden();
+        std::vector<Tok>::iterator pStart = currTok;
 
         if (ifName.has_value()) {
             if (expOp("=").has_value()) {
                 std::optional<Tok> ifVal = expIden();
-
+                
                 if (ifVal.has_value()) {
                     if (expOp(";").has_value()) {
-                        vals.push_back(ifName->text);
-                        vals.push_back(ifVal->text);
+                        vals.push_back("arr:" + arrRet + "name:" + ifName->text);
+                        vals.push_back("arr:" + arrRet + "val:" + ifVal->text);
+                        vals.push_back("}");
                         return true;
                     }
                     else {
-                        error = "invalid syntax";
-                        currTok = pStart;
+                        error = "invalid syntax - ';' missing";
+                        pStart = currTok;
                     }
                 }
                 else {
                     error = "no value found";
-                    currTok = pStart;
+                    pStart = currTok;
                 }
             }
             else {
-                error = "invalid syntax";
-                currTok = pStart;
+                error = "invalid syntax - '=' missing";
+                pStart = currTok;
             }
         }
         else {
-            error = "no names found";
-            currTok = pStart;
+            error = "no name found";
+            pStart = currTok;
         }
         return false;
     }
@@ -233,5 +384,20 @@ namespace ftn {
         Tok returnTok = *currTok;
         ++currTok;
         return returnTok; 
+    }
+
+    bool Parse::expType(std::string name) {
+        if (currTok == endTok) { return false; }
+        if (currTok->text != name && !name.empty()) { return false; }
+        
+        for (std::string i : types) {
+            if (i == name) {
+                ++currTok;
+                return true;
+            }
+        }
+
+        ++currTok;
+        return false;
     }
 }
