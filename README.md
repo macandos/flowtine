@@ -12,6 +12,6 @@ To declare variables, you can do: <br />
 To access the value in C++, do: <br/>
 <code>
   ftn::val("name"); <br />
-  // Output <br />
+  // Output <br /> <br />
   // value
 </code>
