@@ -6,26 +6,26 @@ a json-style parser library made for C++, used for making simple declerations
 ### Declaring variables
 To declare variables: <br />
 ```
-  var name = value; 
+  name = value
 ```
 
 C++: <br/>
 ```cpp
-ftn::val("name");
-// Output: value
+Flowtine ftn("file");
+ftn.get("name")
 ```
 
 ### Declaring Arrays
 To declare arrays: <br />
 ```
-arr name = {
-   val1 = 1;
-   val2 = 2;
-   val3 = 3;
+name = {
+   val1 = 1
+   val2 = 2
+   val3 = 3
 };
 ```
 C++: <br />
 ```cpp
-// val1 being the var inside the array, and name being the name of the array
-ftn::val("val1", "name");
+Flowtine ftn("file");
+ftn.get("name.val1");
 ```
