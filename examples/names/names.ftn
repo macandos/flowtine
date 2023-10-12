@@ -1,0 +1,5 @@
+employees = {
+    John = 7500
+    Katy = 5000
+    Patrick = 6200
+}
