@@ -19,6 +19,9 @@ ftn.get("name")
 To declare arrays: <br />
 ```
 name = {
+   nestedarray = {
+      hi = yay
+   }
    val1 = 1
    val2 = 2
    val3 = 3
@@ -27,5 +30,5 @@ name = {
 C++: <br />
 ```cpp
 Flowtine ftn("file");
-ftn.get("name.val1");
+ftn.get("name.nestedarray.hi");
 ```
